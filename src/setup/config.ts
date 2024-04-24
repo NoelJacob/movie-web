@@ -23,6 +23,7 @@ interface Config {
   ONBOARDING_CHROME_EXTENSION_INSTALL_LINK: string;
   ONBOARDING_FIREFOX_EXTENSION_INSTALL_LINK: string;
   ONBOARDING_PROXY_INSTALL_LINK: string;
+  ALLOW_AUTOPLAY: boolean;
 }
 
 export interface RuntimeConfig {
@@ -31,14 +32,15 @@ export interface RuntimeConfig {
   DONATION_LINK: string;
   DISCORD_LINK: string;
   DMCA_EMAIL: string | null;
-  TMDB_READ_API_KEY: string;
+  TMDB_READ_API_KEY: string | null;
   NORMAL_ROUTER: boolean;
   PROXY_URLS: string[];
-  BACKEND_URL: string;
+  BACKEND_URL: string | null;
   DISALLOWED_IDS: string[];
   TURNSTILE_KEY: string | null;
   CDN_REPLACEMENTS: Array<string[]>;
   HAS_ONBOARDING: boolean;
+  ALLOW_AUTOPLAY: boolean;
   ONBOARDING_CHROME_EXTENSION_INSTALL_LINK: string | null;
   ONBOARDING_FIREFOX_EXTENSION_INSTALL_LINK: string | null;
   ONBOARDING_PROXY_INSTALL_LINK: string | null;
@@ -64,50 +66,54 @@ const env: Record<keyof Config, undefined | string> = {
   TURNSTILE_KEY: import.meta.env.VITE_TURNSTILE_KEY,
   CDN_REPLACEMENTS: import.meta.env.VITE_CDN_REPLACEMENTS,
   HAS_ONBOARDING: import.meta.env.VITE_HAS_ONBOARDING,
+  ALLOW_AUTOPLAY: import.meta.env.VITE_ALLOW_AUTOPLAY,
 };
+
+function coerceUndefined(value: string | null | undefined): string | undefined {
+  if (value == null) return undefined;
+  if (value.length === 0) return undefined;
+  return value;
+}
 
 // loads from different locations, in order: environment (VITE_{KEY}), window (public/config.js)
 function getKeyValue(key: keyof Config): string | undefined {
-  let windowValue = (window as any)?.__CONFIG__?.[`VITE_${key}`];
-  if (
-    windowValue !== null &&
-    windowValue !== undefined &&
-    windowValue.length === 0
-  )
-    windowValue = undefined;
-  return env[key] ?? windowValue ?? undefined;
+  const windowValue = (window as any)?.__CONFIG__?.[`VITE_${key}`];
+
+  return coerceUndefined(env[key]) ?? coerceUndefined(windowValue) ?? undefined;
 }
 
-function getKey(key: keyof Config, defaultString?: string): string {
-  return getKeyValue(key)?.toString() ?? defaultString ?? "";
+function getKey(key: keyof Config): string | null;
+function getKey(key: keyof Config, defaultString: string): string;
+function getKey(key: keyof Config, defaultString?: string): string | null {
+  return getKeyValue(key)?.toString() ?? defaultString ?? null;
 }
 
 export function conf(): RuntimeConfig {
-  const dmcaEmail = getKey("DMCA_EMAIL");
-  const chromeExtension = getKey("ONBOARDING_CHROME_EXTENSION_INSTALL_LINK");
-  const firefoxExtension = getKey("ONBOARDING_FIREFOX_EXTENSION_INSTALL_LINK");
-  const proxyInstallLink = getKey("ONBOARDING_PROXY_INSTALL_LINK");
-  const turnstileKey = getKey("TURNSTILE_KEY");
   return {
     APP_VERSION,
     GITHUB_LINK,
     DONATION_LINK,
     DISCORD_LINK,
-    DMCA_EMAIL: dmcaEmail.length > 0 ? dmcaEmail : null,
-    ONBOARDING_CHROME_EXTENSION_INSTALL_LINK:
-      chromeExtension.length > 0 ? chromeExtension : null,
-    ONBOARDING_FIREFOX_EXTENSION_INSTALL_LINK:
-      firefoxExtension.length > 0 ? firefoxExtension : null,
-    ONBOARDING_PROXY_INSTALL_LINK:
-      proxyInstallLink.length > 0 ? proxyInstallLink : null,
+    DMCA_EMAIL: getKey("DMCA_EMAIL"),
+    ONBOARDING_CHROME_EXTENSION_INSTALL_LINK: getKey(
+      "ONBOARDING_CHROME_EXTENSION_INSTALL_LINK",
+      "https://chromewebstore.google.com/detail/movie-web-extension/hoffoikpiofojilgpofjhnkkamfnnhmm",
+    ),
+    ONBOARDING_FIREFOX_EXTENSION_INSTALL_LINK: getKey(
+      "ONBOARDING_FIREFOX_EXTENSION_INSTALL_LINK",
+      "https://addons.mozilla.org/en-GB/firefox/addon/movie-web-extension",
+    ),
+    ONBOARDING_PROXY_INSTALL_LINK: getKey("ONBOARDING_PROXY_INSTALL_LINK"),
     BACKEND_URL: getKey("BACKEND_URL", BACKEND_URL),
     TMDB_READ_API_KEY: getKey("TMDB_READ_API_KEY"),
-    PROXY_URLS: getKey("CORS_PROXY_URL")
+    PROXY_URLS: getKey("CORS_PROXY_URL", "")
       .split(",")
-      .map((v) => v.trim()),
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0),
     NORMAL_ROUTER: getKey("NORMAL_ROUTER", "false") === "true",
-    HAS_ONBOARDING: getKey("HAS_ONBOARDING", "false") === "true",
-    TURNSTILE_KEY: turnstileKey.length > 0 ? turnstileKey : null,
+    HAS_ONBOARDING: getKey("HAS_ONBOARDING", "true") === "true",
+    ALLOW_AUTOPLAY: getKey("ALLOW_AUTOPLAY", "false") === "true",
+    TURNSTILE_KEY: getKey("TURNSTILE_KEY"),
     DISALLOWED_IDS: getKey("DISALLOWED_IDS", "")
       .split(",")
       .map((v) => v.trim())

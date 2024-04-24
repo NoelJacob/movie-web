@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAsyncFn } from "react-use";
 
@@ -122,6 +122,9 @@ export function SettingsPage() {
   const enableThumbnails = usePreferencesStore((s) => s.enableThumbnails);
   const setEnableThumbnails = usePreferencesStore((s) => s.setEnableThumbnails);
 
+  const enableAutoplay = usePreferencesStore((s) => s.enableAutoplay);
+  const setEnableAutoplay = usePreferencesStore((s) => s.setEnableAutoplay);
+
   const account = useAuthStore((s) => s.account);
   const updateProfile = useAuthStore((s) => s.setAccountProfile);
   const updateDeviceName = useAuthStore((s) => s.updateDeviceName);
@@ -144,6 +147,7 @@ export function SettingsPage() {
     backendUrlSetting,
     account?.profile,
     enableThumbnails,
+    enableAutoplay,
   );
 
   useEffect(() => {
@@ -196,6 +200,7 @@ export function SettingsPage() {
     }
 
     setEnableThumbnails(state.enableThumbnails.state);
+    setEnableAutoplay(state.enableAutoplay.state);
     setAppLanguage(state.appLanguage.state);
     setTheme(state.theme.state);
     setSubStyling(state.subtitleStyling.state);
@@ -208,21 +213,28 @@ export function SettingsPage() {
     // when backend url gets changed, log the user out first
     if (state.backendUrl.changed) {
       await logout();
-      setBackendUrl(state.backendUrl.state);
+
+      let url = state.backendUrl.state;
+      if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
+        url = `https://${url}`;
+      }
+
+      setBackendUrl(url);
     }
   }, [
-    state,
     account,
     backendUrl,
     setEnableThumbnails,
+    state,
+    setEnableAutoplay,
     setAppLanguage,
     setTheme,
     setSubStyling,
+    setProxySet,
     updateDeviceName,
     updateProfile,
-    setProxySet,
-    setBackendUrl,
     logout,
+    setBackendUrl,
   ]);
   return (
     <SubPageLayout>
@@ -260,6 +272,8 @@ export function SettingsPage() {
             setLanguage={state.appLanguage.set}
             enableThumbnails={state.enableThumbnails.state}
             setEnableThumbnails={state.enableThumbnails.set}
+            enableAutoplay={state.enableAutoplay.state}
+            setEnableAutoplay={state.enableAutoplay.set}
           />
         </div>
         <div id="settings-appearance" className="mt-48">
